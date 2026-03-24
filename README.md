@@ -22,17 +22,14 @@ Script Python que enriquece dados de municípios brasileiros usando a API do IBG
 
 ## Execução
 
-```bash
-#certifique que o arquivo import.csv esteja na mesma pasta que o código!
+# Certifique que o arquivo **import.csv** esteja no mesmo diretório!
 
+```bash
 # Entre na pasta dos scripts
 cd scripts
 
 # Execute o desafio
 python prova_tecnica.py
-
-# Coloque suas credenciais
-
 ```
 
 ## Resultado
