@@ -1,0 +1,60 @@
+## Notas Explicativas - Decisões Técnicas
+
+### 1. Normalização de Strings
+
+Antes de comparar nomes de municípios, aplico uma normalização que:
+- Remove acentos usando `unicodedata.normalize('NFD')` + filtro de diacríticos
+- Converte para minúsculas
+- Remove espaços extras
+
+Isso permite comparar "São Paulo" com "Sao Paulo" ou "SAO PAULO" de forma equivalente.
+
+### 2. Distância de Levenshtein
+
+Escolhi implementar o algoritmo de Levenshtein manualmente (sem bibliotecas externas) para calcular a "distância de edição" entre duas strings - ou seja, o número mínimo de operações (inserir, deletar, substituir) para transformar uma string em outra.
+
+**Por que Levenshtein?**
+- É o algoritmo padrão para fuzzy matching de strings
+- Funciona bem para erros de digitação comuns (letras trocadas, faltando ou a mais)
+- Complexidade O(n*m) é aceitável para nomes de municípios (strings curtas)
+
+### 3. Threshold de Distância = 2
+
+Defini que aceito matches com distância até 2 caracteres. Isso permite:
+- "Curitba" → "Curitiba" (1 inserção)
+- "Belo Horzionte" → "Belo Horizonte" (1 inserção)
+- "Niteroi" → "Niterói" (normalização já resolve)
+
+### 4. Detecção de Caracteres Duplicados
+
+O caso "Santoo Andre" exigiu tratamento especial. Mesmo com distância 1, não deveria ser aceito porque é um erro de digitação óbvio (letra "o" duplicada).
+
+Implementei `has_repeated_chars_error()` que:
+- Identifica sequências de caracteres repetidos no input
+- Compara com o padrão esperado do IBGE
+- Rejeita se houver mais repetições no input do que no esperado
+
+### 5. Estrutura de Dados da API do IBGE
+
+A API do IBGE retorna ~5500 municípios. Para busca eficiente:
+- Construo um índice (dicionário) com nomes normalizados como chaves
+- Primeiro tento match exato O(1)
+- Se falhar, faço busca linear com Levenshtein O(n)
+
+A estrutura hierárquica do IBGE é: `município → microrregião → mesorregião → UF → região`
+
+### 6. Cálculo de Médias por Região
+
+Para as médias populacionais por região:
+- Agrupo municípios OK por região
+- Calculo média aritmética simples
+- Arredondo para 2 casas decimais
+
+Apenas municípios com status "OK" entram no cálculo (excluindo "NAO_ENCONTRADO").
+
+### 7. Autenticação via Supabase
+
+O fluxo de autenticação:
+1. POST para `/auth/v1/token?grant_type=password` com email/senha
+2. Supabase retorna JWT no campo `access_token`
+3. Uso esse token no header `Authorization: Bearer <token>` para a API de correção
